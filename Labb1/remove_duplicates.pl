@@ -1,10 +1,10 @@
-% Helper predicate to track seen elements.
+% Helper predicate to track seen elements, basecase.
 remove_duplicates_helper([], _, []).  % No elements to process.
 
 % Recursive case: Include H if it's not already seen.
 remove_duplicates_helper([H|T], Seen, [H|R]) :-
     \+ member(H, Seen),   % H has not been seen yet.
-    remove_duplicates_helper(T, [H|Seen], R).  % Add H to Seen and recurse.
+    remove_duplicates_helper(T, [H|Seen], R).  % Ad H to Seen and recurse.
 
 % Recursive case: Skip H if it has been seen.
 remove_duplicates_helper([H|T], Seen, R) :-
