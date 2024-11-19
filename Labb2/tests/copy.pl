@@ -34,7 +34,7 @@ verify_box(Row, Row, PrevLines) :-
 %% Alla olika Propositioner.
 
 % Premiss
-check_line(Prems, [_, Formula, Premiss], _) :-
+check_line(Prems, [_, Formula, premise], _) :-
     member(Formula, Prems).
 
 % assumption
@@ -120,6 +120,3 @@ check_line(_, [_, X, pbc(RowNR1, RowNR2)], PrevLines) :-
 
 % lem
 check_line(_, [_, or(X, neg(X)), lem], _).
-
-
-
