@@ -1,149 +1,125 @@
-%%% Verifiering av beviset och inläsning
 
-verify(InputFileName) :- 
-    see(InputFileName), read(Prems), read(Goal), read(Proof),
+% Reads File
+verify(InputFileName) :-
+    see(InputFileName),
+    read(Prems), read(Goal), read(Proof),
     seen,
-    check_goal(Goal, Proof),
-    valid_proof(Prems, Goal, Proof,[]).
-    %write('
-%predikatet uppfyllt
-%
-%').
+    check_proof(Prems, Goal, Proof).
 
-%%% Kontrollerar om "Goal" (högerled) är lika med sista raden i beviset "Proof"
+% Main predicate to verify the entire proof
+check_proof(Prems, Goal, Proof) :-
+    last(Proof, [_, Goal, _]), % check that the last line in proof is Goal
+    verify_proof(Prems, Proof, []).
 
-check_goal(Goal,[ [_ ,X, _] | [] ]):-
-  Goal = X.
+% Base case
+verify_proof(_, [], _). % the second argument is proof (if it is empty, we are done)
 
-check_goal(Goal,[ _ |Tail]):-
-      check_goal(Goal,Tail).
+% Recursive case: Verify top down
+verify_proof(Prems, [Row | Rest], PrevLines) :-
+    check_line(Prems, Row , PrevLines), % line verification (check each line)
+    append(PrevLines, [Row], NewLines), % if we are here, previous line is valid
+    verify_proof(Prems, Rest , NewLines). % continue verifying the rest of the proof
 
-%%% Kontroll av varje steg
+% Box handling
+verify_box(Start, End, PrevLines) :-
+    member([Start | Rest], PrevLines),
+    last(Rest, End).
 
-valid_proof(_, _, [], _).
-
-valid_proof(Prems, Goal, [H|T], PrevLines) :-
-    check_line(Prems, Goal, H, PrevLines),
-    valid_proof(Prems, Goal, T, [H|PrevLines]).
-
-
-
-
-%%%%% Nedan används "Check Line" för att kolla alla bevisregler %%%%%%
+% assumption box only covers one line
+verify_box(Row, Row, PrevLines) :-
+    member([Row], PrevLines).
 
 
 
+%% All Diffrent operations.
+
+% premise
+check_line(Prems, [_, Formula, premise], _) :-
+    member(Formula, Prems).
+
+% assumption
+check_line(Prems, Row, PrevLines) :-
+    Row = [[_, _, assumption] | RestBox],
+    append(PrevLines, Row, NewLines),
+    verify_proof(Prems, RestBox, NewLines).
+
+% copy(x)
+check_line(_, [_, X, copy(RowNR)], PrevLines) :-
+    member([RowNR, X, _], PrevLines).
+
+% andint(x, y)
+check_line(_, [_, and(X, Y), andint(RowNR1, RowNR2)], PrevLines) :-
+    member([RowNR1, X, _], PrevLines),
+    member([RowNR2, Y, _], PrevLines).
+
+% andel1(x)
+check_line(_, [_, X, andel1(RowNR)], PrevLines) :-
+    member([RowNR, and(X, _), _], PrevLines).
+
+% andel2(x)
+check_line(_, [_, Y, andel2(RowNR)], PrevLines) :-
+    member([RowNR, and(_, Y), _], PrevLines).
+
+% orint1(x)
+check_line(_, [_, or(X, _), orint1(RowNR)], PrevLines) :-
+    member([RowNR, X, _], PrevLines).
+
+% orint2(x)
+check_line(_, [_, or(_, Y), orint2(RowNR)], PrevLines) :-
+    member([RowNR, Y, _], PrevLines).
+
+% orel(x, y, z, u, v)
+check_line(_, [_, Conclusion, orel(RowNR1, RowNR2, RowNR3, RowNR4, RowNR5)], PrevLines) :-
+    member([RowNR1, or(X, Y), _], PrevLines),
+    verify_box([RowNR2, X, assumption],
+    [RowNR3, Conclusion, _], PrevLines),
+    verify_box([RowNR4, Y, assumption],
+    [RowNR5, Conclusion, _], PrevLines).
+
+% impint(x, y)
+check_line(_, [_, imp(X, Y), impint(RowNR1, RowNR2)], PrevLines) :-
+    verify_box([RowNR1, X, assumption],
+    [RowNR2, Y, _], PrevLines).
+
+% impel(x, y)
+check_line(_, [_, Y, impel(RowNR1, RowNR2)], PrevLines) :-
+    member([RowNR1, X, _], PrevLines),
+    member([RowNR2, imp(X, Y), _], PrevLines).
+
+% negint(x, y)
+check_line(_, [_, neg(X), negint(RowNR1, RowNR2)], PrevLines) :-
+    verify_box([RowNR1, X, assumption],
+    [RowNR2, cont, _], PrevLines).
+
+% negel(x, y)
+check_line(_, [_, cont, negel(RowNR1, RowNR2)], PrevLines) :-
+    member([RowNR1, X, _], PrevLines),
+    member([RowNR2, neg(X), _], PrevLines).
+
+% contel(x)
+check_line(_, [_, _, contel(RowNR)], PrevLines) :-
+    member([RowNR, cont, _], PrevLines).
+
+% negnegint(x)
+check_line(_, [_, neg(neg(X)), negnegint(RowNR)], PrevLines) :-
+    member([RowNR, X, _], PrevLines).
+
+% negnegel(x)
+check_line(_, [_, X, negnegel(RowNR)], PrevLines) :-
+    member([RowNR, neg(neg(X)), _], PrevLines).
+
+% mt(x, y)
+check_line(_, [_, neg(X), mt(RowNR1, RowNR2)], PrevLines) :-
+    member([RowNR1, imp(X, Y), _], PrevLines),
+    member([RowNR2, neg(Y), _], PrevLines).
+
+% pbc(x, y)
+check_line(_, [_, X, pbc(RowNR1, RowNR2)], PrevLines) :-
+    verify_box([RowNR1, neg(X), assumption],
+    [RowNR2, cont, _], PrevLines).
+
+% lem
+check_line(_, [_, or(X, neg(X)), lem], _).
 
 
-%%% Kontrollerar om "premiss" finns i "premisslistan" (i textfil)
-check_line(Prems, _, [_, X, premise], _) :-
-    member(X, Prems).
 
-
-%%% Kontrollerar  "And" (både introduction och elimination) 
-check_line(_, _, [_, and(X,Y), andint(A,B)], PrevLines) :-
-    member([A, X, _], PrevLines),
-    member([B, Y, _], PrevLines).
-
-check_line(_, _, [_, X, andel1(A)], PrevLines) :-
-	member([A, and(X,_), _], PrevLines).
-
-check_line(_, _, [_, X, andel2(A)], PrevLines) :-
-	member([A, and(_, X), _], PrevLines). 	   
-
-
-%%% Kontrollerar "Implication" (både introduction och elimination)
-check_line(_, _, [_, imp(X,Y), impint(A,B)], PrevLines) :-
-    member(Lista , PrevLines),
-    member([A, X, assumption], Lista),
-    member([B, Y, _], Lista).
-
-check_line(_, _, [_, Y, impel(A,B)], PrevLines) :-
-	member([A, X, _], PrevLines),
-	member([B, imp(X,Y), _], PrevLines).
-
-
-%%% Kontrollerar "assumption", (eg. öppnar en box)
-check_line(Prems, Goal, [[_,_,assumption]|T], PrevLines) :-
-    valid_proof(Prems, Goal, T,[[_, _, assumption]|PrevLines]).
-
-
-%%%%Kontrollerar "or" introduction
-check_line(_, _, [_, or(X,_), orint1(A)], PrevLines) :-
-	member([A, X, _], PrevLines).   
-
-check_line(_, _, [_, or(_, Y), orint2(A)], PrevLines) :-
-	member([A, Y, _], PrevLines).
-
-
-%%%% Kontrollerar "copy"
-check_line(_, _, [_, X, copy(A)], PrevLines) :-
-	member([A, X, _], PrevLines).
-
-
-%%%% Kontrollerar "contradiction-elemination" 
-check_line(_, _, [_, _, contel(X)], PrevLines) :-
-	member([X, cont, _], PrevLines).
-
-
-%%%% Kontrollerar "negintroduction" och "negelemination"
-check_line(_, _, [_, neg(X), negint(A,B)], PrevLines) :-
-	member(Lista , PrevLines),
-	member([A, X, assumption], Lista),
-	member([B, cont, _], Lista).
-
-check_line(_, _ , [_, cont, negel(A,B)], PrevLines) :-
-	member([A, X, _], PrevLines),
-	member([B, neg(X), _], PrevLines).
-
-
-%%%% Kontrollerar "dubbel negint och negel"
-check_line(_, _, [_, neg(neg(X)), negnegint(A)], PrevLines) :-
-	member([A, X, _], PrevLines).
-
-check_line(_, _, [_, X, negnegel(A)], PrevLines) :-
-	member([A, neg(neg(X)), _], PrevLines).	
-
-
-%%%% Kontrollerar "Modus Tollens" 
-check_line(_, _, [_, neg(X), mt(A,B)], PrevLines) :-
-	member([A, imp(X,Y), _], PrevLines),
-	member([B, neg(Y), _], PrevLines).
-
-
-%%%% Kontrollerar "PBC"
-check_line(_, _, [_, X, pbc(A,B)], PrevLines) :-
-	member(Lista , PrevLines),
-	member([A, neg(X), assumption], Lista),
-	member([B, cont, _], Lista).
-
-
-%%%% Kontrollerar "LEM"
-check_line(_, _, [_ , or(X,neg(X)), lem], _).	
-
-
-%%%% Kontrollerar "or elimination"
-check_line(_, _, [_, X, orel(A,B,C,D,E)], PrevLines) :-
-    member(Lista, PrevLines),
-    member(Lista2, PrevLines),
-    member([A, or(Y,Z), _], PrevLines),
-    member([B, Y, assumption], Lista),
-    member([C, X, Type1], Lista),
-    member([D, Z, assumption], Lista2),
-    member([E, X, Type2], Lista2),
-    extract_line_number(Type1, L1),
-    extract_line_number(Type2, L2),
-    between(B, C, L1),
-    between(D, E, L2).
-
-extract_line_number(impel(L), L).
-extract_line_number(andint(L1, L2), [L1, L2]).
-extract_line_number(andel1(L), L).
-extract_line_number(andel2(L), L).
-extract_line_number(orint1(L), L).
-extract_line_number(orint2(L), L).
-extract_line_number(copy(L), L).
-extract_line_number(contel(L), L).
-extract_line_number(negint(L1, L2), [L1, L2]).
-extract_line_number(negel(L1, L2), [L1, L2]).
-extract_line_number(negnegint(L), L).
