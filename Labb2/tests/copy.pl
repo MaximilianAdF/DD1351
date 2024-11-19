@@ -4,10 +4,10 @@ verify(InputFileName) :-
     see(InputFileName),
     read(Prems), read(Goal), read(Proof),
     seen,
-    check_proof(Prems, Goal, Proof).
+    valid_proof(Prems, Goal, Proof).
 
 % Main predicate to verify the entire proof
-check_proof(Prems, Goal, Proof) :-
+valid_proof(Prems, Goal, Proof) :-
     last(Proof, [_, Goal, _]), % check that the last line in proof is Goal
     verify_proof(Prems, Proof, []).
 
