@@ -1,12 +1,51 @@
-
-% Reads input
 verify(Input) :-
-        see(Input), read(V), read(L), read(S), read(F), 
+        see(Input), 
+        read(V), read(L), read(S), read(F), 
         seen, 
-        check(V, L, S, [], F).
+        check(V, L, S, [], F), !.
+
+%% check_all_states anropar check med alla tillstånd i första argumentet.
+% Faktum
+check_all_states(_, _, [], _, _).
+
+% Hanterar fall när U inte är tom.
+check_all_states(V, L, [H|T], U, X) :-
+        check(V, L, H, U, X),
+        check_all_states(V, L, T, [H|U], X).
+
+% Hanterar fall när U är tom.
+check_all_states(V, L, [H|T], [], X) :-
+        check(V, L, H, [], X),
+        check_all_states(V, L, T, [], X).
+
+%% check_existing ger true om ett anrop till check ger true.
+% Faktum
+check_existing(_, _, [], _, _) :- fail.
+
+% Hanterar fall när U inte är tom.
+check_existing(V, L, [H|T], U, X) :-
+        check(V, L, H, U, X);
+        check_existing(V, L, T, [H|U], X).
+        
+% Hanterar fall när U är tom.
+check_existing(V, L, [H|T], [], X) :-
+        check(V, L, H, [], X);
+        check_existing(V, L, T, [], X).
 
 
-check(T, L, S, U, F)
+
+%% Literals
+% p
+check(_, L, S, [], X) :- 
+        member([S, Ls], L),
+        member(X, Ls).
+
+% neg p
+check(_, L, S, [], neg(X)) :-
+        member([S, Ls], L),
+        \+member(X, Ls).
+
+
 
 
 % And
@@ -19,10 +58,6 @@ check(V, L, S, [], or(F,G)) :-
         check(V, L, S, [], F);
         check(V, L, S, [], G).
 
-% Imp
-check(V, L, S, [], imp(F,G)) :- 
-        \+check(V, L, S, [], F);
-        check(V, L, S, [], G).
 
 % AX
 check(V, L, S, [], ax(F)) :-
@@ -32,7 +67,7 @@ check(V, L, S, [], ax(F)) :-
 % EX
 check(V, L, S, [], ex(F)) :-
         member([S, Ls], V),
-        check_exist_state(V, L, Ls, [], F).
+        check_existing(V, L, Ls, [], F).
 
 % AG1, S is in U
 check(_, _, S, U, ag(_)) :-
@@ -54,7 +89,7 @@ check(V, L, S, U, eg(F)) :-
         \+ member(S, U),
         check(V, L, S, [], F),
         member([S, Ls], V),
-        check_exist_state(V, L, Ls, [S|U], eg(F)).
+        check_existing(V, L, Ls, [S|U], eg(F)).
 
 % % EF1
 check(V, L, S, U, ef(F)) :- 
@@ -65,7 +100,7 @@ check(V, L, S, U, ef(F)) :-
 check(V, L, S, U, ef(F)) :- 
         \+ member(S, U),
         member([S, Ls], V),
-        check_exist_state(V, L, Ls, [S|U], ef(F)).
+        check_existing(V, L, Ls, [S|U], ef(F)).
 
 % AF1
 check(V, L, S, U, af(F)) :-
@@ -78,42 +113,5 @@ check(V, L, S, U, af(F)) :-
         member([S, Ls], V),
         check_all_states(V, L, Ls, [S|U], af(F)).
 
-%% Literals
-% p
-check(_, L, S, [], X) :- 
-        member([S, Ls], L),
-        member(X, Ls).
-
-% neg p
-check(_, L, S, [], neg(X)) :-
-        member([S, Ls], L),
-        \+member(X, Ls).
 
 
-%% check_all_states calls check witch all states in in first argument.
-% Fact
-check_all_states(_, _, [], _, _).
-
-% Handles cases when U is not empty.
-check_all_states(V, L, [H|T], U, X) :-
-        check(V, L, H, U, X),
-        check_all_states(V, L, T, [H|U], X).
-
-% Handles cases when U is empty.
-check_all_states(V, L, [H|T], [], X) :-
-        check(V, L, H, [], X),
-        check_all_states(V, L, T, [], X).
-
-%% check_exist_state gives true if one call to check gives true.
-% Fact
-check_exist_state(_, _, [], _, _) :- fail.
-
-% Handles cases when U is not empty.
-check_exist_state(V, L, [H|T], U, X) :-
-        check(V, L, H, U, X);
-        check_exist_state(V, L, T, [H|U], X).
-        
-% Handles cases when U is empty.
-check_exist_state(V, L, [H|T], [], X) :-
-        check(V, L, H, [], X);
-        check_exist_state(V, L, T, [], X).
