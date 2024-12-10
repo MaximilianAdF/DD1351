@@ -1,16 +1,29 @@
+% States are idle, sending, in_transit, received, and lost
+
+%s0 = idle
+%s1 = sending
+%s2 = in_transit
+%s3 = received
+%s4 = lost
+% Adjacency lists of LTS
 [[s0, [s1]],
  [s1, [s2]],
  [s2, [s3, s4]],
  [s3, [s0]],
  [s4, [s1]]].
+ 
+%packet_sent = s
+%packet_received = r
+%packet_lost = l
 
+% Labeling of LTS
 [[s0, []],
  [s1, [s]],
  [s2, []],
  [s3, [r]],
  [s4, [l]]].
 
-s0.
+s4.
 
-ag(and(s,ef(or(r,l)))).
+ex(s).
 
