@@ -4,7 +4,8 @@ verify(Input) :-
         seen, 
         check(V, L, S, [], F), !.
 
-%% check_all_states anropar check med alla tillstånd i första argumentet.
+%check_all_states Går igenom alla tillstånd i en lista och kontrollerar att F gäller
+
 % Faktum
 check_all_states(_, _, [], _, _).
 
@@ -18,7 +19,7 @@ check_all_states(V, L, [H|T], [], X) :-
         check(V, L, H, [], X),
         check_all_states(V, L, T, [], X).
 
-%% check_existing ger true om ett anrop till check ger true.
+% check_existing Går igenom en lista och returnerar true om F gäller i minst ett tillstånd.
 % Faktum
 check_existing(_, _, [], _, _) :- fail.
 
@@ -59,27 +60,29 @@ check(V, L, S, [], or(F,G)) :-
         check(V, L, S, [], G).
 
 
-% AX
+% AX (Alla nästa tillstånd)
 check(V, L, S, [], ax(F)) :-
         member([S, Ls], V),
         check_all_states(V, L, Ls, [], F).
 
-% EX
+% EX (Det finns ett nästa tillstånd)
 check(V, L, S, [], ex(F)) :-
         member([S, Ls], V),
         check_existing(V, L, Ls, [], F).
 
-% AG1, S is in U
+%AG (Alltid globalt)
+% AG1, S är i U
 check(_, _, S, U, ag(_)) :-
         member(S, U).
 
-% AG2, S is NOT in U
+% AG2, S är INTE i U
 check(V, L, S, U, ag(F)) :-
         \+ member(S, U),
         check(V, L, S, [], F),
         member([S, Ls], V),
         check_all_states(V, L, Ls, [S|U], ag(F)).
 
+%EG (Det finns en väg där alltid F gäller)
 % EG1
 check(_, _, S, U, eg(_)) :-
         member(S, U).
@@ -91,7 +94,9 @@ check(V, L, S, U, eg(F)) :-
         member([S, Ls], V),
         check_existing(V, L, Ls, [S|U], eg(F)).
 
-% % EF1
+
+% EF (Det finns en väg där F gäller någon gång)
+%  EF1
 check(V, L, S, U, ef(F)) :- 
         \+ member(S, U),
         check(V, L, S, [], F).
@@ -102,6 +107,7 @@ check(V, L, S, U, ef(F)) :-
         member([S, Ls], V),
         check_existing(V, L, Ls, [S|U], ef(F)).
 
+%AF (Alla vägar leder till F någon gång)
 % AF1
 check(V, L, S, U, af(F)) :-
         \+ member(S, U),
